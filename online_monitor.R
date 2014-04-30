@@ -4,7 +4,6 @@ for (pack in options("defaultPackages")[[1]]) suppressPackageStartupMessages(req
 ## libs if running from analog of .Rprofile (no harm otherwise)
 
 library(ggplot2, quietly = TRUE)
-library(reshape2, quietly = TRUE)
 suppressPackageStartupMessages(library(data.table, quietly = TRUE))
 library(RGtk2, quietly = TRUE) # if put before pipe, pipe hangs
 library(e1071, quietly = TRUE) # for kurtosis
@@ -666,7 +665,7 @@ Orientation of x,y axes, if looked at FEV8 with chips on the top:
 Channels with 2 or 4 connected pixels are on the top and on the right in this
 picture.
 
-Cntrl-D or exit() in the R console terminates the program.
+Cntrl-D or quit() in the R console terminates the program.
 
 The R interactive console responds to user input and has its own "event loop".
 GTK+ GUI also has the "event loop" which is executed when R event loop is
