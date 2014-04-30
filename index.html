@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <meta charset='utf-8' />
+    <meta http-equiv="X-UA-Compatible" content="chrome=1" />
+    <meta name="description" content="Online monitor : R+GTK program to analysize SiW ECAL ILD technological prototype data." />
+
+    <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
+
+    <title>Online monitor</title>
+  </head>
+
+  <body>
+
+    <!-- HEADER -->
+    <div id="header_wrap" class="outer">
+        <header class="inner">
+          <a id="forkme_banner" href="https://github.com/balagura/online_monitor">View on GitHub</a>
+
+          <h1 id="project_title">Online monitor</h1>
+          <h2 id="project_tagline">R+GTK program to analysize SiW ECAL ILD technological prototype data.</h2>
+
+            <section id="downloads">
+              <a class="zip_download_link" href="https://github.com/balagura/online_monitor/zipball/master">Download this project as a .zip file</a>
+              <a class="tar_download_link" href="https://github.com/balagura/online_monitor/tarball/master">Download this project as a tar.gz file</a>
+            </section>
+        </header>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div id="main_content_wrap" class="outer">
+      <section id="main_content" class="inner">
+        <h2>
+<a name="installation" class="anchor" href="#installation"><span class="octicon octicon-link"></span></a>Installation</h2>
+
+<p>I am using Ubuntu, for Scientific Linux the commands should be similar.
+First, make sure the following packages are installed:</p>
+
+<pre><code>sudo apt-get -y install git
+sudo apt-get -y install libgtk2.0-dev
+sudo apt-get -y install r-base
+sudo apt-get -y install r-doc-info
+</code></pre>
+
+<p>Then, run </p>
+
+<pre><code>sudo R
+</code></pre>
+
+<p>and type in R session:</p>
+
+<pre><code>install.packages(ggplot2)
+install.packages(data.table)
+install.packages(e1071)
+install.packages(setwidth)
+install.packages("RGtk2")
+install.packages("cairoDevice")
+install.packages("gWidgetsRGtk2", dep = TRUE) # this installs gWidgets as well
+quit()
+</code></pre>
+
+<h2>
+<a name="download-and-compile-the-code" class="anchor" href="#download-and-compile-the-code"><span class="octicon octicon-link"></span></a>Download and compile the code</h2>
+
+<pre><code>mkdir &lt;your_github_directory&gt;
+cd &lt;your_github_directory&gt;
+git clone https://github.com/balagura/online_monitor.git
+</code></pre>
+
+<p>The code should be in <code>&lt;your_github_directory&gt;/online_monitor</code></p>
+
+<pre><code>cd &lt;your_github_directory&gt;/online_monitor
+cd raw
+make
+cd ..
+</code></pre>
+
+<h2>
+<a name="run-the-code" class="anchor" href="#run-the-code"><span class="octicon octicon-link"></span></a>Run the code</h2>
+
+<pre><code>&lt;your_github_directory&gt;/online_monitor/online_monitor.sh
+</code></pre>
+
+<p>if it is not executable, first, change permissions:</p>
+
+<pre><code>chmod +x &lt;your_github_directory&gt;/online_monitor/online_monitor.sh
+</code></pre>
+
+<p>Once the program is started, you may press "Help" button to learn more. 
+The same help information can be found in the bottom of online_monitor.R file.</p>
+
+<h2>
+<a name="contacting-the-author" class="anchor" href="#contacting-the-author"><span class="octicon octicon-link"></span></a>Contacting the author</h2>
+
+<p>If you have any questions or comments, please, do not hesitate to contact me
+(Vladislav Balagura, <a href="mailto:balagura@llr.in2p3.fr">balagura@llr.in2p3.fr</a>).</p>
+      </section>
+    </div>
+
+    <!-- FOOTER  -->
+    <div id="footer_wrap" class="outer">
+      <footer class="inner">
+        <p class="copyright">Online monitor maintained by <a href="https://github.com/balagura">balagura</a></p>
+        <p>Published with <a href="http://pages.github.com">GitHub Pages</a></p>
+      </footer>
+    </div>
+
+    
+
+  </body>
+</html>
