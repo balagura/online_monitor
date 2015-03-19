@@ -72,11 +72,12 @@ load.raw <- function(file) {
         setnames(hits.local, 'bx0', 'bx') # drop old BX, substitute it by new bx0 which may be >=4096
         
         ev.local <- hits.local[,list(n.trig=sum(trig)), keyby=list(acq,bx)]  # Find retriggers across all chips in dif
-        
         ev.local[,bx.group:=cumsum( c(0,diff(bx)) > 4 ), by=list(acq)]  # c(0,diff(bx)) = distances to previous BX; nice trick to group bxid's differing by at most 3 ("successive")
         ev.local[,`:=`(nbx=.N, ibx=1:.N), by=list(acq,bx.group)]   # finally, number of "successive" BXs in each group, ibx>1 means retriggerings
 
         ev.local.chip <- hits.local[,list(n.trig.chip=sum(trig)), keyby=list(acq,chip,sca,bx)] # same per chip (name with .chip), events for one chip are sorted first in SCA
+        ev.local.chip[,bx.group.chip:=cumsum( c(0,diff(bx)) > 4 ), by=list(acq,chip)]  
+        ev.local.chip[,`:=`(nbx.chip=.N, ibx.chip=1:.N), by=list(acq,chip,bx.group.chip)]
 
         any.event.wo.trig <- any(ev.local.chip$n.trig.chip == 0)
         if (any.event.wo.trig) {
@@ -85,14 +86,9 @@ load.raw <- function(file) {
             ev.local.trig[,bx.group.trig:=cumsum( c(0,diff(bx)) > 4 ), by=list(acq,chip)]  # find retriggers per chip AND only for events with triggers
             ev.local.trig[,`:=`(nbx.trig=.N, ibx.trig=1:.N), by=list(acq,chip,bx.group.trig)]
             ev.local.chip <- ev.local.trig[ev.local.chip]
-        }
-        ev.local.chip[,bx.group.chip:=cumsum( c(0,diff(bx)) > 4 ), by=list(acq,chip)]  
-        ev.local.chip[,`:=`(nbx.chip=.N, ibx.chip=1:.N), by=list(acq,chip,bx.group.chip)]
-
-        if (any.event.wo.trig) {
-            ev.local.chip <- merge(ev.local, ev.local.chip, by=c('acq','bx'), all=TRUE)
         } else ev.local.chip[,`:=`(bx.group.trig=bx.group.chip, nbx.trig=nbx.chip, ibx.trig=ibx.chip)]
-        
+
+        ev.local.chip <- merge(ev.local, ev.local.chip, by=c('acq','bx'), all=TRUE)
         hits.local <- merge(hits.local, ev.local.chip, by=c('acq','chip','bx', 'sca'))
 
 #        hits.local <- hits.local[ibx==1] # remove retriggers
