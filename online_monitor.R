@@ -81,8 +81,8 @@ load.raw <- function(file) {
 
         any.event.wo.trig <- any(ev.local.chip$n.trig.chip == 0)
         if (any.event.wo.trig) {
-            ev.local.trig <- ev.local.chip[n.trig.chip>0][,n.trig.chip:=NULL] # remove events wo triggers, name with .trig, this automatically means per chip
-
+            ev.local.trig <- ev.local.chip[n.trig.chip>0, list(acq,chip,sca,bx)] # remove events wo triggers, name with suffix .trig,
+            ## this automatically means per chip
             ev.local.trig[,bx.group.trig:=cumsum( c(0,diff(bx)) > 4 ), by=list(acq,chip)]  # find retriggers per chip AND only for events with triggers
             ev.local.trig[,`:=`(nbx.trig=.N, ibx.trig=1:.N), by=list(acq,chip,bx.group.trig)]
             ev.local.chip <- ev.local.trig[ev.local.chip]
