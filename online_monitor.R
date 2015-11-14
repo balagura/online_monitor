@@ -35,10 +35,10 @@ cut.glob <- ''
 cut <- function(all.chips=FALSE, all.scas=FALSE) {
     res <- if (cut.glob == '') 'TRUE' else paste0('(',cut.glob,')') # brackets for OR: (cut1 | cut2) & chip==1
     if (all.chips == FALSE & chip.glob != 'All') {
-        res <- paste0(res,' & chip==',chip.glob)
+	res <- paste0(res,' & chip==',chip.glob)
     }
     if (all.scas == FALSE & sca.glob != 'All') {
-        res <- paste0(res,' & sca==',sca.glob)
+	res <- paste0(res,' & sca==',sca.glob)
     }
     res
 }
@@ -59,76 +59,76 @@ load.raw <- function(file) {
     df.names <- c('acq','bx','sca','chip','i','adc','trig')
     df.classes <- c(rep('integer',6), 'logical')
     hits.local <- data.table(read.table(pipe(paste0(online.monitor.dir,'/raw/raw ',file,' 0 high_gain_triggers ', pedestal.suppression)),
-                                     col.names=df.names, colClasses=df.classes, comment.char=''),
-                          key='acq,chip,sca,bx')
+				     col.names=df.names, colClasses=df.classes, comment.char=''),
+			  key='acq,chip,sca,bx')
     if (nrow(hits.local) > 0) {
-        hits.local[,bx.cor:=cumsum( {
-            dbx = c(0,diff(bx))
-            dbx < 0 | ( dbx == 0 & c(0,diff(sca))>0 )
-               })*4096+bx, by=list(acq,chip)] # For each spill,chip: sort in SCA: bx.cor = bx + N*4096, where N - number of detected oveflows,
-                                        # ie. number of times when BX goes down, eg. maximally: from 4095 to 0.
-                                        # Note, if bx jumps by >4096 crossings, this is not correct (but this is the best one can do with only 12 bits for BX).
-                                        # dbx < 0 | ( dbx == 0 & c(0,diff(sca))>0 ): treat a jump by 4096 BXs as a special case:
-                                        # in this case BX stays the same (dbx==0) but SCA changes
+	hits.local[,bx.cor:=cumsum( {
+	    dbx = c(0,diff(bx))
+	    dbx < 0 | ( dbx == 0 & c(0,diff(sca))>0 )
+	       })*4096+bx, by=list(acq,chip)] # For each spill,chip: sort in SCA: bx.cor = bx + N*4096, where N - number of detected oveflows,
+					# ie. number of times when BX goes down, eg. maximally: from 4095 to 0.
+					# Note, if bx jumps by >4096 crossings, this is not correct (but this is the best one can do with only 12 bits for BX).
+					# dbx < 0 | ( dbx == 0 & c(0,diff(sca))>0 ): treat a jump by 4096 BXs as a special case:
+					# in this case BX stays the same (dbx==0) but SCA changes
 
-        ## bx.cor correction is done per chip; BX in different chips may still be compared only modulo(4096): eg. in the same event the
-        ## jump may be detected in one chip, but not in the other. Ie. across chips one uses bx (== bx.cor modulo(4096)), within the chip - bx.cor.
+	## bx.cor correction is done per chip; BX in different chips may still be compared only modulo(4096): eg. in the same event the
+	## jump may be detected in one chip, but not in the other. Ie. across chips one uses bx (== bx.cor modulo(4096)), within the chip - bx.cor.
 
-        ev.local <- hits.local[,list(n.trig=sum(trig)), keyby=list(acq,bx)]  # Find retriggers across all chips in dif
-        ev.local[,bx.group:=cumsum( c(0,diff(bx)) > 4 ), by=list(acq)]  # c(0,diff(bx)) = distances to previous BX;
-        ## nice trick to group bxid's differing by at most 3 ("successive")
-        ev.local[,`:=`(nbx=.N, ibx=1:.N), by=list(acq,bx.group)]   # finally, number of "successive" BXs in each group, ibx>1 means retriggerings
+	ev.local <- hits.local[,list(n.trig=sum(trig)), keyby=list(acq,bx)]  # Find retriggers across all chips in dif
+	ev.local[,bx.group:=cumsum( c(0,diff(bx)) > 4 ), by=list(acq)]  # c(0,diff(bx)) = distances to previous BX;
+	## nice trick to group bxid's differing by at most 3 ("successive")
+	ev.local[,`:=`(nbx=.N, ibx=1:.N), by=list(acq,bx.group)]   # finally, number of "successive" BXs in each group, ibx>1 means retriggerings
 
-        ## In FEV10, sometimes there are events with negative signals (eg. ADC==4). Pedestals in such events
-        ## are shifted. To avoid errors, pedestals are calculated only if there are no any channel with "negative" signal in the same event.
-        ##
-        ## Algorithm: calculate minimal untriggered median ADC per chip,channel,SCA, than take median per chip, across SCA and channels ==
-        ## average chip pedestal to first order (biased by "negative" signals);
-        ## define 0.75 of that as a lower threshold to select "unbiased" pedestal events.
-        ## This assumes that all pedestals within the chip > 0.75 * (chip average).
-        negative.adc.threshold <- 0.75 * min(merge(hits.local,
-                                                   ev.local[,list(acq,bx,ibx)], # add ibx to hits.local to require ibx==1
-                                                   by=c('acq','bx'))[trig==FALSE & ibx==1
-                                                       ][, list(ped=as.double(median(adc))), by=list(chip,i,sca)
-                                                         ][,list(ped=median(ped)),by=list(chip)]$ped)
-        cat('Negitive threshold:',negative.adc.threshold, '\n')
+	## In FEV10, sometimes there are events with negative signals (eg. ADC==4). Pedestals in such events
+	## are shifted. To avoid errors, pedestals are calculated only if there are no any channel with "negative" signal in the same event.
+	##
+	## Algorithm: calculate minimal untriggered median ADC per chip,channel,SCA, than take median per chip, across SCA and channels ==
+	## average chip pedestal to first order (biased by "negative" signals);
+	## define 0.75 of that as a lower threshold to select "unbiased" pedestal events.
+	## This assumes that all pedestals within the chip > 0.75 * (chip average).
+	negative.adc.threshold <- 0.75 * min(merge(hits.local,
+						   ev.local[,list(acq,bx,ibx)], # add ibx to hits.local to require ibx==1
+						   by=c('acq','bx'))[trig==FALSE & ibx==1
+						       ][, list(ped=as.double(median(adc))), by=list(chip,i,sca)
+							 ][,list(ped=median(ped)),by=list(chip)]$ped)
+	cat('Negitive threshold:',negative.adc.threshold, '\n')
 
-        ## same per chip (name with .chip), events for one chip are sorted first in SCA
-        ev.local.chip <- hits.local[,list(n.trig.chip=sum(trig),
-                                          n.neg.trig.chip=sum(adc<negative.adc.threshold)), keyby=list(acq,chip,sca,bx.cor,bx)]
-        ev.local.chip[,bx.group.chip:=cumsum( c(0,diff(bx.cor)) > 4 ), by=list(acq,chip)]
-        ev.local.chip[,`:=`(nbx.chip=.N, ibx.chip=1:.N), by=list(acq,chip,bx.group.chip)]
+	## same per chip (name with .chip), events for one chip are sorted first in SCA
+	ev.local.chip <- hits.local[,list(n.trig.chip=sum(trig),
+					  n.neg.trig.chip=sum(adc<negative.adc.threshold)), keyby=list(acq,chip,sca,bx.cor,bx)]
+	ev.local.chip[,bx.group.chip:=cumsum( c(0,diff(bx.cor)) > 4 ), by=list(acq,chip)]
+	ev.local.chip[,`:=`(nbx.chip=.N, ibx.chip=1:.N), by=list(acq,chip,bx.group.chip)]
 
-        ## do the same, but taking into account only events with at least one trigger
-        ## (in SKIROC, if trigger arrives at the clock edge, both BX and BX+1 are written, but the latter without any triggers, if there is no retriggering)
-        any.event.wo.trig <- any(ev.local.chip$n.trig.chip == 0)
-        if (any.event.wo.trig) {
-            ev.local.trig <- ev.local.chip[n.trig.chip>0, list(acq,chip,sca,bx.cor,bx)] # remove events wo triggers, name with suffix .trig;
-            ## note: this automatically means per chip
-            ev.local.trig[,bx.group.trig:=cumsum( c(0,diff(bx.cor)) > 4 ), by=list(acq,chip)]  # find retriggers per chip AND only for events with triggers
-            ev.local.trig[,`:=`(nbx.trig=.N, ibx.trig=1:.N), by=list(acq,chip,bx.group.trig)]
-            ev.local.chip <- ev.local.trig[ev.local.chip]
-        } else ev.local.chip[,`:=`(bx.group.trig=bx.group.chip, nbx.trig=nbx.chip, ibx.trig=ibx.chip)]
+	## do the same, but taking into account only events with at least one trigger
+	## (in SKIROC, if trigger arrives at the clock edge, both BX and BX+1 are written, but the latter without any triggers, if there is no retriggering)
+	any.event.wo.trig <- any(ev.local.chip$n.trig.chip == 0)
+	if (any.event.wo.trig) {
+	    ev.local.trig <- ev.local.chip[n.trig.chip>0, list(acq,chip,sca,bx.cor,bx)] # remove events wo triggers, name with suffix .trig;
+	    ## note: this automatically means per chip
+	    ev.local.trig[,bx.group.trig:=cumsum( c(0,diff(bx.cor)) > 4 ), by=list(acq,chip)]  # find retriggers per chip AND only for events with triggers
+	    ev.local.trig[,`:=`(nbx.trig=.N, ibx.trig=1:.N), by=list(acq,chip,bx.group.trig)]
+	    ev.local.chip <- ev.local.trig[ev.local.chip]
+	} else ev.local.chip[,`:=`(bx.group.trig=bx.group.chip, nbx.trig=nbx.chip, ibx.trig=ibx.chip)]
 
-        ev.local.chip <- merge(ev.local, ev.local.chip, by=c('acq','bx'), all=TRUE)
-        hits.local <- merge(hits.local, ev.local.chip, by=c('acq','chip','sca','bx.cor','bx'))
+	ev.local.chip <- merge(ev.local, ev.local.chip, by=c('acq','bx'), all=TRUE)
+	hits.local <- merge(hits.local, ev.local.chip, by=c('acq','chip','sca','bx.cor','bx'))
 
 #        hits.local <- hits.local[ibx==1] # remove retriggers
 
-        hits.local <- merge(hits.local, map[,list(chip,i,x,y)], by=c('chip','i'), all.x=TRUE)
+	hits.local <- merge(hits.local, map[,list(chip,i,x,y)], by=c('chip','i'), all.x=TRUE)
 
-        ## subtract pedestals, find them from trig==FALSE & ibx==1 & (no channel in the same chip with ADC < negative.adc.threshold), otherwise set to NA
-        hits.local[,a := {
-                       unbiased.pedestal <- trig==FALSE & ibx==1 & n.neg.trig.chip == 0
-                       as.double(adc) - if(any(unbiased.pedestal)) median(adc[unbiased.pedestal]) else NA
-                     }, by=list(chip,i,sca)]
-        setkey(hits.local, acq, chip, bx.cor, i)
-        setkey(ev.local.chip, acq, chip, bx.cor)
-        setkey(ev.local, acq, bx)
+	## subtract pedestals, find them from trig==FALSE & ibx==1 & (no channel in the same chip with ADC < negative.adc.threshold), otherwise set to NA
+	hits.local[,a := {
+		       unbiased.pedestal <- trig==FALSE & ibx==1 & n.neg.trig.chip == 0
+		       as.double(adc) - if(any(unbiased.pedestal)) median(adc[unbiased.pedestal]) else NA
+		     }, by=list(chip,i,sca)]
+	setkey(hits.local, acq, chip, bx.cor, i)
+	setkey(ev.local.chip, acq, chip, bx.cor)
+	setkey(ev.local, acq, bx)
 
-        hits <<- hits.local
-        ev <<- ev.local
-        ev.chip <<- ev.local.chip
+	hits <<- hits.local
+	ev <<- ev.local
+	ev.chip <<- ev.local.chip
     } else display.no.data()
 }
 
@@ -154,34 +154,60 @@ plots[['64 ADC']] <- function() {
     d <- rbind(d[,all.trig:='all'],d[trig==TRUE][,all.trig:='trig'])
     bin <- max(as.integer(range(d$adc) / 200), 1)
     ggplot(d)+
-        geom_histogram(aes(x=adc,color=all.trig,fill=all.trig),
-                       position='identity',alpha=0.3,binwidth=bin)+facet_wrap(~i)+
-                           labs(x='ADC, channels',y='Counts')+
-                               scale_color_hue(name='Events')+scale_fill_hue(name='Events')
+	geom_histogram(aes(x=adc,color=all.trig,fill=all.trig),
+		       position='identity',alpha=0.3,binwidth=bin)+facet_wrap(~i)+
+			   labs(x='ADC, channels',y='Counts')+
+			       scale_color_hue(name='Events')+scale_fill_hue(name='Events')
 }
 plots[['64 (ADC-pedestal)']] <- function() {
     d <- hits[eval(cut.expr())]
     d <- rbind(d[,all.trig:='all'],d[trig==TRUE][,all.trig:='trig'])
     bin <- max(as.integer(range(d$adc) / 200), 1)
     ggplot(d)+
-        geom_histogram(aes(x=a,color=all.trig,fill=all.trig),
-                       position='identity',alpha=0.3,binwidth=bin)+facet_wrap(~i)+
-                           labs(x='Pedestal subtracted ADC, channels',y='Counts')+
-                               scale_color_hue(name='Events')+scale_fill_hue(name='Events')
+	geom_histogram(aes(x=a,color=all.trig,fill=all.trig),
+		       position='identity',alpha=0.3,binwidth=bin)+facet_wrap(~i)+
+			   labs(x='Pedestal subtracted ADC, channels',y='Counts')+
+			       scale_color_hue(name='Events')+scale_fill_hue(name='Events')
+}
+plots[['64 pedestals']] <- function() {
+    trig.channels <- hits[trig==TRUE, list(n=.N), keyby=list(chip,i)]
+    ## no cut() for trig.channels selection
+    d <- hits[eval(cut.expr()) & trig==FALSE & ibx==1 & n.neg.trig.chip == 0,
+	      list(adc,trig,sca), keyby=list(chip,i)]
+    d <- trig.channels[d]
+    pedestals <- d[,list(ped=median(as.double(adc))), keyby=list(chip,i,sca)]
+    limits <- d[,list(adc.mean=median(as.double(adc)),
+		      adc.mad =mad   (as.double(adc))), keyby=list(chip,i)
+		][,{
+		    rng <- quantile(adc.mean, c(0.01, 0.99))
+		    avr.width <- median(adc.mad)
+		    list(left =rng[1] - 20 * avr.width,
+			 right=rng[2] + 20 * avr.width)
+		    }]
+    d <- d[limits$left < adc & adc < limits$right]
+    ## remove channels without triggers (masked) as trig=F contains hits there
+    ## note, however, sometimes triggers appear even in masked channels
+    bin <- max(round(diff(range(d$adc)) / 100), 1)
+    pedestals <- pedestals[,list(rng=c(min(ped),max(ped))), keyby=i]
+    qplot(data=d, x=adc, binwidth=bin, facets=~i,
+	  xlab='Pedestal, ADC counts', ylab='Counts', color=I('black')) +
+	geom_vline(data=pedestals[limits$left < rng & rng < limits$right],
+		   aes(xintercept=rng), color='red')
 }
 plots[['Channels w/trig']] <- function() {
-    trig.channels <- unique(hits[trig==TRUE]$i) # no cut() for trig.channels selection
-    d <- hits[eval(cut.expr()) & (i %in% trig.channels)]
+    trig.channels <- hits[trig==TRUE, list(n=.N), keyby=list(chip,i)] # no cut() for trig.channels selection
+    d <- hits[eval(cut.expr()), list(adc, trig), keyby=list(chip,i)]
+    d <- trig.channels[d]
     d <- rbind(d[,all.trig:='all'],d[trig==TRUE][,all.trig:='trig'])
     ggplot(d)+
-        geom_histogram(aes(x=adc,color=all.trig,fill=all.trig),
-                       position='identity',alpha=0.3,binwidth=1)+facet_wrap(~i)+
-                           labs(x='ADC, channels',y='Counts')+
-                               scale_color_hue(name='Events')+scale_fill_hue(name='Events')
+	geom_histogram(aes(x=adc,color=all.trig,fill=all.trig),
+		       position='identity',alpha=0.3,binwidth=1)+facet_wrap(~i)+
+			   labs(x='ADC, channels',y='Counts')+
+			       scale_color_hue(name='Events')+scale_fill_hue(name='Events')
 }
 plots[['N "successive" SCA']] <- function() {
     qplot(data=ev.chip[eval(cut.expr(all.scas=TRUE)) & ibx.trig==1],nbx.trig, facets=~chip, xlab='N "successive" SCA',ylab='Counts',
-        main='',binwidth=1)
+	main='',binwidth=1)
 }
 plots[['N trigs(ch), ibx=1']] <- function() {
     d <- hits[eval(cut.expr()) & trig==TRUE & ibx==1][,list(n.trig=.N),by=list(i,chip)][n.trig>0]
@@ -190,36 +216,36 @@ plots[['N trigs(ch), ibx=1']] <- function() {
 plots[['N trigs(ch,chip), ibx=1']] <- function() {
     d <- hits[eval(cut.expr()) & trig==TRUE & ibx==1][,list(n.trig=.N),by=list(i,chip)][n.trig>0]
     qplot(data=d, i,chip,fill=n.trig,
-          geom='tile',color=I('darkgreen'),xlab='Channel',ylab='Chip') + scale_fill_gradient(low="green", high="red",name='N trigs')
+	  geom='tile',color=I('darkgreen'),xlab='Channel',ylab='Chip') + scale_fill_gradient(low="green", high="red",name='N trigs')
 }
 plots[['N trigs(X,Y), ibx=1']] <- function() {
     d <- hits[eval(cut.expr()) & trig==TRUE & ibx==1][,list(n.trig=.N),by=list(x,y,i,chip)][n.trig>0]
     qplot(data=d, x,y,fill=n.trig,geom='tile',color=I('darkgreen'),xlab='X',ylab='Y') +
-        scale_fill_gradient(low="green", high="red",name='N trigs') +
-            geom_text(aes(label=paste0(chip,':',i),alpha=chip),color=I('black'),fontface=I(2),size=I(3))+scale_alpha(range=c(0.3,0.8))
+	scale_fill_gradient(low="green", high="red",name='N trigs') +
+	    geom_text(aes(label=paste0(chip,':',i),alpha=chip),color=I('black'),fontface=I(2),size=I(3))+scale_alpha(range=c(0.3,0.8))
 }
 plots[['<ADC>(ch,chip)']] <- function() {
     qplot(data=hits[eval(cut.expr()), list(n.trig=sum(trig),ADC=mean(adc)), by=list(chip,i)],i,chip,fill=ADC,
-        geom='tile',color=I('darkgreen'),xlab='Channel (* means there are triggers)',ylab='Chip') + scale_fill_gradient(low="green", high="red") +
+	geom='tile',color=I('darkgreen'),xlab='Channel (* means there are triggers)',ylab='Chip') + scale_fill_gradient(low="green", high="red") +
     geom_text(aes(label=ifelse(n.trig>0,'*','')),color=I('black'),fontface=I(2),size=I(3))
 }
 plots[['<ADC>(X,Y)']] <- function() {
     qplot(data=hits[eval(cut.expr()), list(n.trig=sum(trig),ADC=mean(adc),x=x[1],y=y[1]), by=list(chip,i)],x,y,fill=ADC,
-        geom='tile',color=I('darkgreen'),xlab='X (* means there are triggers)',ylab='Y') + scale_fill_gradient(low="green", high="red") +
+	geom='tile',color=I('darkgreen'),xlab='X (* means there are triggers)',ylab='Y') + scale_fill_gradient(low="green", high="red") +
     geom_text(aes(label=paste0(chip,':',i,ifelse(n.trig>0,',*','')),alpha=chip),color=I('black'),fontface=I(2),size=I(3))+scale_alpha(range=c(0.3,0.8))
 }
 plots[['<Trigger-ped.>(ch,chip), ibx=1']] <- function() {
     d <- hits[eval(cut.expr()) & trig==TRUE &  ibx==1 & !is.na(a)][,list(mean.trig=mean(a)),by=list(i,chip)]
     if (nrow(d)>0) {
-        qplot(data=d,
-              i,chip,fill=mean.trig,geom='tile',color=I('darkgreen'),xlab='Channel',ylab='Chip') + scale_fill_gradient(low="green", high="red",name='<ADC-ped.>')
+	qplot(data=d,
+	      i,chip,fill=mean.trig,geom='tile',color=I('darkgreen'),xlab='Channel',ylab='Chip') + scale_fill_gradient(low="green", high="red",name='<ADC-ped.>')
     } else display.no.data()
 }
 plots[['<Trigger-ped.>(X,Y), ibx=1']] <- function() {
     d <- hits[eval(cut.expr()) & trig==TRUE &  ibx==1 & !is.na(a)][,list(mean.trig=mean(a)),by=list(x,y,chip)]
     if (nrow(d)>0) {
-        qplot(data=d,
-              x,y,fill=mean.trig,geom='tile',color=I('darkgreen'),xlab='X',ylab='Y') + scale_fill_gradient(low="green", high="red",name='<ADC-ped.>') +
+	qplot(data=d,
+	      x,y,fill=mean.trig,geom='tile',color=I('darkgreen'),xlab='X',ylab='Y') + scale_fill_gradient(low="green", high="red",name='<ADC-ped.>') +
     geom_text(aes(label=paste0(chip,':',i),alpha=chip),color=I('black'),fontface=I(2),size=I(3))+scale_alpha(range=c(0.3,0.8))
     } else display.no.data()
 }
@@ -231,12 +257,12 @@ plots[['Trig-ped. sum(X,Y), ibx=1']] <- function() {
 }
 plots[['RMS(ch,chip)']] <- function() {
     qplot(data=hits[eval(cut.expr()), list(n.trig=sum(trig),RMS=sd(adc)), by=list(chip,i)],i,chip,fill=RMS,
-        geom='tile',color=I('darkgreen'),xlab='Channel (* means there are triggers)',ylab='Chip') + scale_fill_gradient(low="green", high="red") +
+	geom='tile',color=I('darkgreen'),xlab='Channel (* means there are triggers)',ylab='Chip') + scale_fill_gradient(low="green", high="red") +
     geom_text(aes(label=ifelse(n.trig>0,'*','')),color=I('black'),fontface=I(2),size=I(3))
 }
 plots[['RMS(X,Y)']] <- function() {
     qplot(data=hits[eval(cut.expr()), list(n.trig=sum(trig),RMS=sd(adc),x=x[1],y=y[1]), by=list(chip,i)],x,y,fill=RMS,
-        geom='tile',color=I('darkgreen'),xlab='X (* means there are triggers)',ylab='Y') + scale_fill_gradient(low="green", high="red") +
+	geom='tile',color=I('darkgreen'),xlab='X (* means there are triggers)',ylab='Y') + scale_fill_gradient(low="green", high="red") +
     geom_text(aes(label=paste0(chip,':',i,ifelse(n.trig>0,',*','')),alpha=chip),color=I('black'),fontface=I(2),size=I(3))+scale_alpha(range=c(0.3,0.8))
 }
 
@@ -245,26 +271,26 @@ plots[['<Pedestals>(ch)']] <- function() {
 }
 plots[['<Pedestal>(ch) VS SCA']] <- function() {
   qplot(data=hits[eval(cut.expr()) & trig==FALSE][,list(ped=mean(adc)),keyby=list(sca,chip,i)],i,ped,color=factor(sca),facets=~chip,
-        xlab='Channel',ylab='Pedestal mean, ADC counts') + scale_color_hue(name='SCA')
+	xlab='Channel',ylab='Pedestal mean, ADC counts') + scale_color_hue(name='SCA')
 }
 plots[['Pedestal RMS(ch) per chip']] <- function() {
   d <- hits[eval(cut.expr()) & trig==FALSE][,a:=adc-mean(adc),by=list(chip,i,sca)][,N:=.N,by=list(chip,i)][N>100][,{
     rms <- sd(a)
     kur <- kurtosis(a, type=2) # type=2 is unbiased for normal distributions (see ?kurtosis from e1071 package)
     list(rms=rms,
-         rms.e=sqrt(2/(.N-1) + kur/.N)*rms/2) # var(rms^2) = rms^4 (2/(N-1) + kur/N), sd(rms) = var(rms^2) / 2 / rms, from
+	 rms.e=sqrt(2/(.N-1) + kur/.N)*rms/2) # var(rms^2) = rms^4 (2/(N-1) + kur/N), sd(rms) = var(rms^2) / 2 / rms, from
   }, by=list(chip,i)]                         # http://en.wikipedia.org/wiki/Variance#Distribution_of_the_sample_variance
   qplot(data=d, i, rms, facets=~chip, xlab='Channel',ylab='RMS, ADC channels')+ geom_pointrange(data=d,aes(ymin=rms-rms.e,ymax=rms+rms.e))
 }
 plots[['Pedestal RMS(ch,chip)']] <- function() {
     qplot(data=hits[eval(cut.expr()) & trig==F][, list(a=adc - mean(adc)), by=list(chip,i,sca)][,list(RMS=sd(a)),by=list(chip,i)],
-          i,chip,fill=RMS,
-          geom='tile',color=I('darkgreen'),xlab='Channel',ylab='Chip') + scale_fill_gradient(low="green", high="red")
+	  i,chip,fill=RMS,
+	  geom='tile',color=I('darkgreen'),xlab='Channel',ylab='Chip') + scale_fill_gradient(low="green", high="red")
 }
 plots[['Pedestal RMS(X,Y)']] <- function() {
     qplot(data=hits[eval(cut.expr()) & trig==F][, list(a=adc - mean(adc),x,y), by=list(chip,i,sca)][,list(RMS=sd(a),x=x[1],y=y[1]),by=list(chip,i)],
-          x,y,fill=RMS,
-          geom='tile',color=I('darkgreen'),xlab='X',ylab='Y') + scale_fill_gradient(low="green", high="red") +
+	  x,y,fill=RMS,
+	  geom='tile',color=I('darkgreen'),xlab='X',ylab='Y') + scale_fill_gradient(low="green", high="red") +
     geom_text(aes(label=paste0(chip,':',i),alpha=chip),color=I('black'),fontface=I(2),size=I(3))+scale_alpha(range=c(0.3,0.8))
 }
 plots[['MIP, ibx=1']] <- function() {
@@ -312,6 +338,128 @@ plots[['BX (w recycles) per (chip,SCA)']] <- function() {
     bin <- max(as.integer(diff(bx.rng)/200), 1)
     qplot(data=e,bx.cor,binwidth=bin,facets=sca~chip, xlab='BX, 4096 limit partially corrected',ylab='Events')
 }
+plots[['Spill number']] <- function() {
+    e <- ev[eval(cut.expr())]
+    rng <- range(e$acq)
+    bin <- max(as.integer(diff(rng)/200), 1)
+    qplot(data=e, acq, binwidth=bin, xlab='Spill', ylab='Events')
+}
+plots[['SCA per chip']] <- function() {
+    qplot(data=ev.chip[eval(cut.expr(all.scas = TRUE))],
+	  sca, facets=~chip, binwidth=1, xlab = 'SCA', ylab='Counts')
+}
+plots[['SCA per chip, ibx=1']] <- function() {
+    qplot(data=ev.chip[eval(cut.expr(all.scas = TRUE)) & ibx.trig==1],
+	  sca, facets=~chip, binwidth=1, xlab = 'SCA', ylab='Counts')
+}
+plots[['Ped. per sum(a), 1 chip, ibx=1']] <- function() {
+    d <- hits[eval(cut.expr()) & ibx==1 & n.neg.trig.chip == 0]
+    ## if chip.glob is given, it is selected in cut.expr() above, otherwise:
+    if (chip.glob == 'All') { # select the most busy chip
+      d.sum <- d[,list(a=sum(a[trig==T & !is.na(a)])), by=chip]
+      chip.shown <- d.sum[which.max(a)]$chip
+      d <- d[chip == chip.shown]
+    } else {
+	chip.shown = chip.glob
+    }
+    d[,a.tot:=sum(a[trig==T & !is.na(a)]), by=list(acq,sca)]
+    a.tot.bin <- round(max(d$a.tot) / 10, -1)
+    d <- d[trig==FALSE]
+    d[,a.tot.bin:=round(a.tot / a.tot.bin) * a.tot.bin, by=list(acq,sca)]
+    d <- d[,a.tot.bin.stat:=.N, by=list(a.tot.bin)]
+    res <- d[a.tot.bin.stat > 0.01*nrow(d) & a.tot.bin.stat > 50]
+    bin <- max(1, round(diff(range(res$adc)) / 200))
+    qplot(data=res, adc,
+	  binwidth = bin,
+	  xlab='Pedestal, ADC channels',
+	  ylab='Counts',main=paste0('Chip ',chip.shown),color=I('black'))+
+	  facet_wrap(~a.tot.bin, scale='free_y') +
+	geom_vline(aes(xintercept=median(adc)),color='red')
+
+}
+## plots[['Ped. per sum(a) per chip, ibx=1']] <- function() {
+##     d <- hits[eval(cut.expr()) & ibx==1 & n.neg.trig.chip == 0]
+##     ## if chip.glob is given, it is selected in cut.expr() above, otherwise:
+##     if (chip.glob == 'All') { # select the most busy chip
+##       d.sum <- d[,list(a=sum(a[trig==T & !is.na(a)])), by=chip]
+##       chip.shown <- d.sum[which.max(a)]$chip
+##       d <- d[chip == chip.shown]
+##     } else {
+##         chip.shown = chip.glob
+##     }
+##     d[,a.tot:=sum(a[trig==T & !is.na(a)]), by=list(acq,sca)]
+##     a.tot.bin <- round(max(d$a.tot) / 10, -1)
+##     d <- d[trig==FALSE]
+##     d[,a.tot.bin:=round(a.tot / a.tot.bin) * a.tot.bin, by=list(acq,sca)]
+##     d <- d[,a.tot.bin.stat:=.N, by=list(a.tot.bin)]
+##     res <- d[a.tot.bin.stat > 0.01*nrow(d) & a.tot.bin.stat > 50,
+## 	     list(pedestal = median(as.double(adc))), by=list(chip,i,sca)] # by=list(chip,i,sca, a.tot.bin)]
+##     bin <- max(1, round(diff(range(res$pedestal)) / 200))
+##     qplot(data=res, pedestal,
+## 	  binwidth = bin,
+## 	  xlab='Pedestal, ADC channels',
+## 	  ylab='Counts',main=paste0('Chip ',chip.shown))+
+## 	  facet_wrap(~a.tot.bin, scale='free_y')
+
+## }
+plots[['MIP VS sum(a) per chip, ibx=1']] <- function() {
+    d <- hits[eval(cut.expr()) & trig==T & ibx==1 & !is.na(a)
+	      & n.neg.trig.chip == 0]
+    d[,a.tot:=sum(a), by=list(acq,chip,sca)]
+    rng <- quantile(d$a, probs = c(0.0, 0.70))
+    a.min <- 0 #as.integer(rng[1]/10) * 10
+    a.max <- as.integer(rng[2]/10) * 10
+    a.tot.bin <- max(d$a.tot) / 10
+    d[,a.tot.bin:=round(a.tot / a.tot.bin) * a.tot.bin, by=list(acq,chip,sca)]
+    d[,a.tot.n:=sum(a.min < a & a < a.max), by=chip]
+    d <- d[,a.tot.bin.stat:=.N, by=list(chip,a.tot.bin)][a.tot.bin.stat > 0.01*a.tot.n]
+    qplot(data=d[a.min < a & a < a.max], a.tot.bin, a,
+	  geom='violin',
+	  facets=~chip, group=a.tot.bin, xlab = 'sum(ADC-pedestal) over chip',
+	  ylab='Trigger-pedestal, ADC channels')
+}
+plots[['MIP per sum(a), 1 chip, ibx=1']] <- function() {
+    d <- hits[eval(cut.expr()) & trig==T & ibx==1 & !is.na(a)
+	      & n.neg.trig.chip == 0]
+    ## if chip.glob is given, it is selected in cut.expr() above, otherwise:
+    if (chip.glob == 'All') { # select the most busy chip
+      d.sum <- d[,list(a=sum(a)), by=chip]
+      chip.shown <- d.sum[which.max(a)]$chip
+      d <- d[chip == chip.shown]
+    } else {
+      chip.shown <- chip.glob
+    }
+    d[,a.tot:=sum(a), by=list(acq,sca)]
+    rng <- quantile(d$a, probs = c(0.0, 0.70))
+    a.min <- 0 #as.integer(rng[1]/10) * 10
+    a.max <- as.integer(rng[2]/10) * 10
+    a.tot.bin <- round(max(d$a.tot) / 10, -1)
+    d[,a.tot.bin:=round(a.tot / a.tot.bin) * a.tot.bin, by=list(acq,sca)]
+    d <- d[,a.tot.bin.stat:=.N, by=list(a.tot.bin)]
+    dd <- d[a.tot.bin.stat > 0.01*nrow(d)]
+    qplot(data=d[a.min < a & a < a.max & a.tot.bin.stat>50], a,
+	  binwidth = ceiling(a.max/200),
+	  xlab='Trigger-pedestal, ADC channels',
+	  ylab='Counts',main=paste0('Chip ',chip.shown))+
+	  facet_wrap(~a.tot.bin, scale='free_y')
+
+}
+plots[['sum(a) per chip, ibx=1']] <- function() {
+    d <- hits[eval(cut.expr()) & trig==T & ibx==1 & !is.na(a)
+	      & n.neg.trig.chip == 0,
+	 list(a.tot=sum(a)), by=list(acq,chip,sca)]
+    qplot(data=d, a.tot,
+	  binwidth=diff(range(d$a.tot))/100,
+	  xlab = 'sum(ADC-pedestal) over chip', ylab='Events') +
+    facet_wrap(~chip, scale='free_y')
+}
+plots[['N trig in chip, ibx=1']] <- function() {
+     qplot(data = hits[eval(cut.expr()) & ibx == 1 & trig==T
+		       & n.neg.trig.chip == 0,
+		       list(n=.N), by=list(acq,chip,sca)],
+	   n, facets = ~chip, binwidth = 1,
+	   xlab = "N triggers in chip",ylab = "Counts")
+}
 standard.plot.names <- names(plots)
 
 if (file.exists(file.with.user.defined.plots)) {
@@ -347,8 +495,8 @@ start.command <- function() {
   file.filter <- gtkFileFilter()
   gtkFileFilterAddPattern(file.filter, '*.raw')
   dialog <- gtkFileChooserDialog("Save File", win, "save",
-                                 "gtk-cancel", GtkResponseType["cancel"],
-                                 "gtk-save", GtkResponseType["accept"])
+				 "gtk-cancel", GtkResponseType["cancel"],
+				 "gtk-save", GtkResponseType["accept"])
   gtkFileChooserSetDoOverwriteConfirmation(dialog, TRUE) # confirm overwriting
   gtkFileChooserSetCurrentFolder(dialog, dirname(file.name))
   gtkFileChooserAddFilter(dialog, file.filter)
@@ -369,13 +517,13 @@ start.command <- function() {
 }
 xml.file <- '/opt/calicoes/ecal.xml'
 state.commands.up   <- c(function() socket.command.one.arg('initialize_det',xml.file),
-                         function() socket.command        ('power_on_det'),
-                         function() socket.command.one.arg('configure_det',xml.file),
-                         start.command)
+			 function() socket.command        ('power_on_det'),
+			 function() socket.command.one.arg('configure_det',xml.file),
+			 start.command)
 state.commands.down <- c(function() {}, #socket.command        ('deinitialize_det'),
-                         function() {}, #socket.command        ('power_off_det'),
-                         function() socket.command        ('invalidate_det'),
-                         function() socket.command        ('stop_acq_det'))
+			 function() {}, #socket.command        ('power_off_det'),
+			 function() socket.command        ('invalidate_det'),
+			 function() socket.command        ('stop_acq_det'))
 
 change.daq.state.selection <- function(ptr) {
   strt <- which(socket.command('get_state_det') == socket.states)
@@ -398,8 +546,8 @@ if (online & FSM) {
   }
   socket.command.one.arg <- function(command, arg) {
     write.socket(socket, paste('<cmd name="',command,'">',
-                               '<param>',arg,'</param>',
-                               '</cmd>\n', sep=''))
+			       '<param>',arg,'</param>',
+			       '</cmd>\n', sep=''))
     return(get.socket.result())
   }
   get.socket.result <- function() {
@@ -446,17 +594,17 @@ change.chip.selection <- function(ptr) {
 }
 change.dif.selection <- function(ptr) {
     if (dif.selection$sensitive == TRUE) {
-        dif.glob <<- as.numeric(sub('DIF ','',gtkComboBoxGetActiveText(dif.selection)))
-        new.file <- sub('[0-9]+.raw$',paste0(dif.glob,'.raw'),file.name)
-        print(new.file)
-        if (file.exists(new.file)) {
-            file.name <<- new.file
-            reload.clicked()
-        } else {
-            display.no.data()
-            update.dif.selection() # if file for this dif was deleted: update available files=difs,
-                                        # if none is available: dif.selection will be disabled
-        }
+	dif.glob <<- as.numeric(sub('DIF ','',gtkComboBoxGetActiveText(dif.selection)))
+	new.file <- sub('[0-9]+.raw$',paste0(dif.glob,'.raw'),file.name)
+	print(new.file)
+	if (file.exists(new.file)) {
+	    file.name <<- new.file
+	    reload.clicked()
+	} else {
+	    display.no.data()
+	    update.dif.selection() # if file for this dif was deleted: update available files=difs,
+					# if none is available: dif.selection will be disabled
+	}
     }
 }
 update.chip.selection <- function() {
@@ -467,15 +615,15 @@ update.chip.selection <- function() {
     gtkComboBoxInsertText(chip.selection, position=0, text=paste('CHIP','All'))
     chips <- sort(unique(ev.chip$chip))
     if (length(chips)>0) {
-        for (pos in 1:length(chips)) gtkComboBoxInsertText(chip.selection, pos, paste('CHIP',chips[pos]))
-        chip.selection$active <- 0
-        chip.selection$sensitive <- TRUE
+	for (pos in 1:length(chips)) gtkComboBoxInsertText(chip.selection, pos, paste('CHIP',chips[pos]))
+	chip.selection$active <- 0
+	chip.selection$sensitive <- TRUE
     }
     chip.selection.connect <<- gSignalConnect(chip.selection, 'changed', change.chip.selection)
 }
 update.dif.selection <- function() { # fill dif.selection with available dif numbers (from X in <this dir>/<file>_by_difX.raw).
     pat <- sub(paste0('(',file.suffix,')[0-9]+(\\.raw)$'), '\\1[0-9]+\\2', basename(file.name))
-                                        ## eg. xxx_by_dif3.raw -> xxx_by_dif[0-9]+.raw
+					## eg. xxx_by_dif3.raw -> xxx_by_dif[0-9]+.raw
     files <- list.files(dirname(file.name), pattern=pat)
     dif.numbers <- sub(paste0('.*',file.suffix,'([0-9]+)\\.raw'),'\\1',files)
     difs <- sort(as.integer(dif.numbers))
@@ -485,10 +633,10 @@ update.dif.selection <- function() { # fill dif.selection with available dif num
 
     gtkListStoreClear(gtkComboBoxGetModel(dif.selection))
     if (length(difs)>0) {
-        for (pos in 1:length(difs)) gtkComboBoxInsertText(dif.selection, pos-1, paste0('DIF ',difs[pos]))
-        dif.selection$active <- which(difs == sub(paste0('.*',file.suffix,'([0-9]+)\\.raw$'), '\\1', basename(file.name)))-1
+	for (pos in 1:length(difs)) gtkComboBoxInsertText(dif.selection, pos-1, paste0('DIF ',difs[pos]))
+	dif.selection$active <- which(difs == sub(paste0('.*',file.suffix,'([0-9]+)\\.raw$'), '\\1', basename(file.name)))-1
 
-        dif.selection$sensitive <- TRUE
+	dif.selection$sensitive <- TRUE
     }
     dif.selection.connect <<- gSignalConnect(dif.selection, 'changed', change.dif.selection)
 }
@@ -506,8 +654,8 @@ pdf.clicked <- function(ptr) {
   file.filter <- gtkFileFilter()
   gtkFileFilterAddPattern(file.filter, '*.pdf')
   dialog <- gtkFileChooserDialog("Open File", win, "open",
-                                 "gtk-cancel", GtkResponseType["cancel"],
-                                 "gtk-open", GtkResponseType["accept"])
+				 "gtk-cancel", GtkResponseType["cancel"],
+				 "gtk-open", GtkResponseType["accept"])
   gtkFileChooserSetCurrentFolder(dialog, pdf.file.dir)
   gtkFileChooserAddFilter(dialog, file.filter)
   gtkFileChooserSetAction(dialog, 'save')
@@ -546,8 +694,8 @@ open.file.clicked <- function(ptr) {
   file.filter <- gtkFileFilter()
   gtkFileFilterAddPattern(file.filter, '*.raw')
   dialog <- gtkFileChooserDialog("Open File", win, "open",
-                                 "gtk-cancel", GtkResponseType["cancel"],
-                                 "gtk-open", GtkResponseType["accept"])
+				 "gtk-cancel", GtkResponseType["cancel"],
+				 "gtk-open", GtkResponseType["accept"])
   gtkFileChooserSetCurrentFolder(dialog, dirname(file.name))
   gtkFileChooserAddFilter(dialog, file.filter)
   update <- FALSE
