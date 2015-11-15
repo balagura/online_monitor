@@ -12,8 +12,9 @@ sudo apt-get -y install r-doc-info
 Then, run
 sudo R
 
-and type in R session (if you'll have problems when installing R packages, please, select http:// mirror sites instead of https://,
-their list appears after clicking on the very bottom line of the initial pop-up list):
+and type in R session (if you have problems when installing R packages,
+please, select http:// mirror sites instead of https://, their list appears
+after clicking on the very bottom line of the initial pop-up list):
 
 install.packages(ggplot2)
 install.packages(data.table)
