@@ -9,10 +9,11 @@ sudo apt-get -y install libgtk2.0-dev
 sudo apt-get -y install r-base
 sudo apt-get -y install r-doc-info
 
-Then, run 
+Then, run
 sudo R
 
-and type in R session:
+and type in R session (if you'll have problems when installing R packages, please, select http:// mirror sites instead of https://,
+their list appears after clicking on the very bottom line of the initial pop-up list):
 
 install.packages(ggplot2)
 install.packages(data.table)
@@ -45,7 +46,7 @@ Run the code
 (if it is not executable, first, change permissions:
 chmod +x <your_github_directory>/online_monitor/online_monitor.sh).
 
-Once the program is started, you may press "Help" button to learn more. 
+Once the program is started, you may press "Help" button to learn more.
 The same help information can be found in the bottom of online_monitor.R file.
 
 Contacting the author
@@ -53,6 +54,3 @@ Contacting the author
 
 If you have any questions or comments, please, do not hesitate to contact me
 (Vladislav Balagura, balagura@llr.in2p3.fr).
-
-
-
