@@ -3,6 +3,7 @@
 #include <raw.hh>
 #include <deque>
 #include <cstring> // for strlen()
+#include <cstdio> // for printf
 #include <algorithm> // for reverse_copy
 
 bool ReadSpill::find_spill_start() {
@@ -15,7 +16,8 @@ bool ReadSpill::find_spill_start() {
   m_data.clear(); // empty previous data
   m_sca.clear();
   static int pattern_length = strlen("SPIL  ")/2 + 3;
-  while (m_file.read((char*)&i, 2)) {
+  //  printf("find spill strt\n");
+  while (m_input->read((char*)&i, 2)) {
     //    printf("%x ",i);
     pattern.push_back(i); // pattern stores last bytes from the file
     if (pattern.size()  > pattern_length) pattern.pop_front();
@@ -40,7 +42,7 @@ bool ReadSpill::find_spill_end() {
   static int start_pattern_length = strlen("SPIL  ")/2 + 3; // note, there may be spill start without spill end
   unsigned short int i;
   // printf("search spill end");
-  while (m_file.read((char*)&i, 2)) {
+  while (m_input->read((char*)&i, 2)) {
     // printf("%x ",i);
     m_data.push_back(i); // store everything in m_data
     unsigned int len = m_data.size();
@@ -54,18 +56,18 @@ bool ReadSpill::find_spill_end() {
       //      printf("\nNew spill start found instead of spill end: %x %x %x %x %x %x\n", m_data[len-6],m_data[len-5],m_data[len-4],m_data[len-3],m_data[len-2],m_data[len-1]);
       //      printf("Acquisition number: %i\n", m_acquisition_number);
       m_data.resize(len-6);
-      m_file.seekg(-6, ios_base::cur); // do not discard uncompleted spill; try to search CHIP blocks
+      m_input->seekg(-6, ios_base::cur); // do not discard uncompleted spill; try to search CHIP blocks
       return true;
       //      m_data.clear(); len = 0; // reset everything
     }
     if (len >= end_pattern_length &&
 	m_data[len-1] == 0xffff) {
       m_data.resize(len-1); // remove match pattern in the end
-      m_file.read((char*)&i, 2);
+      m_input->read((char*)&i, 2);
       unsigned int acq = ((unsigned int) i) << 16;
-      m_file.read((char*)&i, 2);
+      m_input->read((char*)&i, 2);
       acq |= i;
-      //      m_file.read((char*)&i, 2);
+      //      m_input->read((char*)&i, 2);
       //      printf("spill end found (acq = %u, #chips = %u)\n", acq, i);
       //      for (int i=0;i<int(m_data.size());++i) printf("%x ",m_data[i]);         printf("\n");
       if (acq != m_acquisition_number) {

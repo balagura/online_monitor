@@ -5,7 +5,7 @@
 
 #include <vector>
 #include <map>
-#include <fstream>
+#include <iostream>
 
 using namespace std;
 
@@ -22,10 +22,10 @@ struct ChipSCA {
   ChipSCA() : chip_id(0), isca(0) { high.resize(64); low.resize(64); }
 };
 struct ReadSpill {
-  void open(const char* file_name) { m_file.open(file_name, ios::in | ios::binary); m_data.reserve(1024); }
+  void open(istream& is) { m_input = &is; m_data.reserve(1024); }
 
   ReadSpill() {}
-  ReadSpill(const char* file_name) { open(file_name); }
+  ReadSpill(istream& is) { open(is); }
   ReadSpill(const ReadSpill&) {} // assumes no copies are used; needed for vector<ReadSpill>
 
   bool next(); // The main function:
@@ -45,10 +45,10 @@ struct ReadSpill {
   struct ChipBounds { data_iter begin, end; };
   const vector<ChipBounds>& chip() const { return m_chip; } // structure keeping chip block boundaries in data() below
   const vector<unsigned short int>& data() const { return m_data; } // contains all spill data
-  ~ReadSpill() { m_file.close(); }
+  ~ReadSpill() {}
 
-private:
-  ifstream m_file;
+protected:
+  istream* m_input;
   unsigned int m_acquisition_number;
   vector<unsigned short int> m_data;
   vector<ChipBounds> m_chip;
