@@ -80,18 +80,18 @@ load.raw <- function(file) {
 	ev.local[,`:=`(nbx=.N, ibx=1:.N), by=list(acq,bx.group)]   # finally, number of "successive" BXs in each group, ibx>1 means retriggerings
 
 	## In FEV10, sometimes there are events with negative signals (eg. ADC==4). Pedestals in such events
-	## are shifted. To avoid errors, pedestals are calculated only if there are no any channel with "negative" signal in the same event.
+	## are shifted. To avoid errors, pedestals are calculated only if there is no any channel with "negative" signal in the same event.
 	##
-	## Algorithm: calculate minimal untriggered median ADC per chip,channel,SCA, than take median per chip, across SCA and channels ==
-	## average chip pedestal to first order (biased by "negative" signals);
-	## define 0.75 of that as a lower threshold to select "unbiased" pedestal events.
-	## This assumes that all pedestals within the chip > 0.75 * (chip average).
+	## Algorithm: first, find approximate pedestal values (biased by "negative" signals) from untriggered and not retriggered data per chip, channel, SCA.
+        ## Then, take a median pedestal inside every chip and, finally, find the minimum across the chips.
+	## In the following "unbiased" pedestal calculation, only entries above (0.75 * this value) will be considered.
+	## Note, for the chip with the minimal pedestals, this assumes that all its pedestals > 0.75 * (chip average).
 	negative.adc.threshold <- 0.75 * min(merge(hits.local,
 						   ev.local[,list(acq,bx,ibx)], # add ibx to hits.local to require ibx==1
 						   by=c('acq','bx'))[trig==FALSE & ibx==1
 						       ][, list(ped=as.double(median(adc))), by=list(chip,i,sca)
 							 ][,list(ped=median(ped)),by=list(chip)]$ped)
-	cat('Negitive threshold:',negative.adc.threshold, '\n')
+	## cat('Negitive threshold:',negative.adc.threshold, '\n')
 
 	## same per chip (name with .chip), events for one chip are sorted first in SCA
 	ev.local.chip <- hits.local[,list(n.trig.chip=sum(trig),
