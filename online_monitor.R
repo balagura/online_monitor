@@ -118,8 +118,9 @@ load.raw <- function(file) {
 	hits.local <- merge(hits.local, map[,list(chip,i,x,y)], by=c('chip','i'), all.x=TRUE)
 
 	## subtract pedestals, find them from trig==FALSE & ibx==1 & (no channel in the same chip with ADC < negative.adc.threshold), otherwise set to NA
+        ## change in Feb.2016: require nbx==1 as well to remove second pedestal peak due to retrigger, then ibx==1 automatically
 	hits.local[,a := {
-		       unbiased.pedestal <- trig==FALSE & ibx==1 & n.neg.trig.chip == 0
+		       unbiased.pedestal <- trig==FALSE & n.neg.trig.chip == 0 & nbx==1
 		       as.double(adc) - if(any(unbiased.pedestal)) median(adc[unbiased.pedestal]) else NA
 		     }, by=list(chip,i,sca)]
 	setkey(hits.local, acq, chip, bx.cor, i)
