@@ -87,8 +87,8 @@ load.raw <- function(file) {
 	## In the following "unbiased" pedestal calculation, only entries above (0.75 * this value) will be considered.
 	## Note, for the chip with the minimal pedestals, this assumes that all its pedestals > 0.75 * (chip average).
 	negative.adc.threshold <- 0.75 * min(merge(hits.local,
-						   ev.local[,list(acq,bx,ibx)], # add ibx to hits.local to require ibx==1
-						   by=c('acq','bx'))[trig==FALSE & ibx==1
+						   ev.local[,list(acq,bx,nbx)], # add nbx to hits.local to require nbx==1
+						   by=c('acq','bx'))[trig==FALSE & nbx==1
 						       ][, list(ped=as.double(median(adc))), by=list(chip,i,sca)
 							 ][,list(ped=median(ped)),by=list(chip)]$ped)
 	## cat('Negitive threshold:',negative.adc.threshold, '\n')
@@ -173,7 +173,7 @@ plots[['64 (ADC-pedestal)']] <- function() {
 plots[['64 pedestals']] <- function() {
     trig.channels <- hits[trig==TRUE, list(n=.N), keyby=list(chip,i)]
     ## no cut() for trig.channels selection
-    d <- hits[eval(cut.expr()) & trig==FALSE & ibx==1 & n.neg.trig.chip == 0,
+    d <- hits[eval(cut.expr()) & trig==FALSE & nbx==1 & n.neg.trig.chip == 0,
 	      list(adc,trig,sca), keyby=list(chip,i)]
     d <- trig.channels[d]
     pedestals <- d[,list(ped=median(as.double(adc))), keyby=list(chip,i,sca)]
@@ -271,11 +271,13 @@ plots[['<Pedestals>(ch)']] <- function() {
   qplot(data=hits[eval(cut.expr()) & !is.na(a)][,list(ped=adc[1]-a[1]),keyby=list(chip,i)],i,ped,xlab='Channel',ylab='Pedestal mean, ADC counts',facets=~chip)
 }
 plots[['<Pedestal>(ch) VS SCA']] <- function() {
-  qplot(data=hits[eval(cut.expr()) & trig==FALSE][,list(ped=mean(adc)),keyby=list(sca,chip,i)],i,ped,color=factor(sca),facets=~chip,
+    qplot(data=hits[eval(cut.expr()) & trig==FALSE & nbx==1 & n.neg.trig.chip == 0
+                    ][,list(ped=mean(adc)),keyby=list(sca,chip,i)],i,ped,color=factor(sca),facets=~chip,
 	xlab='Channel',ylab='Pedestal mean, ADC counts') + scale_color_hue(name='SCA')
 }
 plots[['Pedestal RMS(ch) per chip']] <- function() {
-  d <- hits[eval(cut.expr()) & trig==FALSE][,a:=adc-mean(adc),by=list(chip,i,sca)][,N:=.N,by=list(chip,i)][N>100][,{
+    d <- hits[eval(cut.expr()) & trig==FALSE & nbx==1 & n.neg.trig.chip == 0
+              ][,a:=adc-mean(adc),by=list(chip,i,sca)][,N:=.N,by=list(chip,i)][N>100][,{
     rms <- sd(a)
     kur <- kurtosis(a, type=2) # type=2 is unbiased for normal distributions (see ?kurtosis from e1071 package)
     list(rms=rms,
@@ -284,12 +286,14 @@ plots[['Pedestal RMS(ch) per chip']] <- function() {
   qplot(data=d, i, rms, facets=~chip, xlab='Channel',ylab='RMS, ADC channels')+ geom_pointrange(data=d,aes(ymin=rms-rms.e,ymax=rms+rms.e))
 }
 plots[['Pedestal RMS(ch,chip)']] <- function() {
-    qplot(data=hits[eval(cut.expr()) & trig==F][, list(a=adc - mean(adc)), by=list(chip,i,sca)][,list(RMS=sd(a)),by=list(chip,i)],
+    qplot(data=hits[eval(cut.expr()) & trig==F & nbx==1 & n.neg.trig.chip == 0
+                    ][, list(a=adc - mean(adc)), by=list(chip,i,sca)][,list(RMS=sd(a)),by=list(chip,i)],
 	  i,chip,fill=RMS,
 	  geom='tile',color=I('darkgreen'),xlab='Channel',ylab='Chip') + scale_fill_gradient(low="green", high="red")
 }
 plots[['Pedestal RMS(X,Y)']] <- function() {
-    qplot(data=hits[eval(cut.expr()) & trig==F][, list(a=adc - mean(adc),x,y), by=list(chip,i,sca)][,list(RMS=sd(a),x=x[1],y=y[1]),by=list(chip,i)],
+    qplot(data=hits[eval(cut.expr()) & trig==F & nbx==1 & n.neg.trig.chip == 0
+                    ][, list(a=adc - mean(adc),x,y), by=list(chip,i,sca)][,list(RMS=sd(a),x=x[1],y=y[1]),by=list(chip,i)],
 	  x,y,fill=RMS,
 	  geom='tile',color=I('darkgreen'),xlab='X',ylab='Y') + scale_fill_gradient(low="green", high="red") +
     geom_text(aes(label=paste0(chip,':',i),alpha=chip),color=I('black'),fontface=I(2),size=I(3))+scale_alpha(range=c(0.3,0.8))
@@ -365,7 +369,7 @@ plots[['Ped. per sum(a), 1 chip, ibx=1']] <- function() {
     }
     d[,a.tot:=sum(a[trig==T & !is.na(a)]), by=list(acq,sca)]
     a.tot.bin <- round(max(d$a.tot) / 10, -1)
-    d <- d[trig==FALSE]
+    d <- d[trig==FALSE & nbx==1]
     d[,a.tot.bin:=round(a.tot / a.tot.bin) * a.tot.bin, by=list(acq,sca)]
     d <- d[,a.tot.bin.stat:=.N, by=list(a.tot.bin)]
     res <- d[a.tot.bin.stat > 0.01*nrow(d) & a.tot.bin.stat > 50]
@@ -390,7 +394,7 @@ plots[['Ped. per sum(a), 1 chip, ibx=1']] <- function() {
 ##     }
 ##     d[,a.tot:=sum(a[trig==T & !is.na(a)]), by=list(acq,sca)]
 ##     a.tot.bin <- round(max(d$a.tot) / 10, -1)
-##     d <- d[trig==FALSE]
+##     d <- d[trig==FALSE & nbx==1]
 ##     d[,a.tot.bin:=round(a.tot / a.tot.bin) * a.tot.bin, by=list(acq,sca)]
 ##     d <- d[,a.tot.bin.stat:=.N, by=list(a.tot.bin)]
 ##     res <- d[a.tot.bin.stat > 0.01*nrow(d) & a.tot.bin.stat > 50,
