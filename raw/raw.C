@@ -52,9 +52,9 @@ bool ReadSpill::find_spill_end() {
 	m_data[len-3] == ('S' | (((unsigned short int) 'P') << 8)) && // note swapped bytes
 	m_data[len-2] == ('I' | (((unsigned short int) 'L') << 8)) &&
 	m_data[len-1] == (' ' | (((unsigned short int) ' ') << 8))) {
-      m_acquisition_number = ((((unsigned int) m_data[len-5])<<16) | m_data[len-4]);
+      // unsigned int acquisition_number = ((((unsigned int) m_data[len-5])<<16) | m_data[len-4]);
       //      printf("\nNew spill start found instead of spill end: %x %x %x %x %x %x\n", m_data[len-6],m_data[len-5],m_data[len-4],m_data[len-3],m_data[len-2],m_data[len-1]);
-      //      printf("Acquisition number: %i\n", m_acquisition_number);
+      //      printf("Acquisition number: %i\n", acquisition_number);
       m_data.resize(len-6);
       m_input->seekg(-6, ios_base::cur); // do not discard uncompleted spill; try to search CHIP blocks
       return true;
