@@ -7,7 +7,8 @@ library(ggplot2, quietly = TRUE)
 suppressPackageStartupMessages(library(data.table, quietly = TRUE))
 library(RGtk2, quietly = TRUE) # if put before pipe, pipe hangs
 library(e1071, quietly = TRUE) # for kurtosis
-library(setwidth, quietly = TRUE) # to automatically adjust R output to terminal width
+## setwidth is no more available in CRAN
+## library(setwidth, quietly = TRUE) # to automatically adjust R output to terminal width
 library(cairoDevice, quietly = TRUE)
 
 if ('colorout' %in% rownames(installed.packages())) library(colorout)
@@ -198,7 +199,7 @@ plots[['64 pedestals']] <- function() {
 plots[['Channels w/trig']] <- function() {
     trig.channels <- hits[trig==TRUE, list(n=.N), keyby=list(chip,i)] # no cut() for trig.channels selection
     d <- hits[eval(cut.expr()), list(adc, trig), keyby=list(chip,i)]
-    d <- trig.channels[d]
+    d <- d[trig.channels]
     d <- rbind(d[,all.trig:='all'],d[trig==TRUE][,all.trig:='trig'])
     ggplot(d)+
 	geom_histogram(aes(x=adc,color=all.trig,fill=all.trig),
