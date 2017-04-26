@@ -1,13 +1,18 @@
 Installation
 -------------
 
-I am using Ubuntu, for Scientific Linux the commands should be similar.
-First, make sure the following packages are installed:
+In Ubuntu, first, make sure the following packages are installed:
 
 sudo apt-get -y install git
 sudo apt-get -y install libgtk2.0-dev
 sudo apt-get -y install r-base
 sudo apt-get -y install r-doc-info
+
+In Scientific Linux:
+
+sudo yum install git
+sudo yum install gtk2-devel
+
 
 Then, run
 sudo R
@@ -19,9 +24,8 @@ after clicking on the very bottom line of the initial pop-up list):
 install.packages("ggplot2")
 install.packages("data.table")
 install.packages("e1071")
-install.packages("setwidth")
 install.packages("RGtk2")
-install.packages("cairoDevice")
+install.packages("cairoDevice") # for that you need X11 running
 install.packages("gWidgetsRGtk2", dep = TRUE) # this installs gWidgets as well
 quit()
 
