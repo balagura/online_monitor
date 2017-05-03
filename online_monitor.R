@@ -252,7 +252,7 @@ plots[['<Trigger-ped.>(X,Y), ibx=1']] <- function() {
     } else display.no.data()
 }
 plots[['Trig-ped. sum(X,Y), ibx=1']] <- function() {
-  d <- hits[eval(cut.expr()) & trig==TRUE & ibx==1 & !is.na(a)][,list(val=sum(a)),by=list(x,y,chip)][val>0]
+  d <- hits[eval(cut.expr()) & trig==TRUE & ibx==1 & !is.na(a)][,list(val=sum(a)),by=list(x,y,chip,i)][val>0]
   qplot(data=d, x,y,fill=val,geom='tile',color=I('darkgreen'),xlab='X',ylab='Y') +
     scale_fill_gradient(low="green", high="red",name='Trig-ped sum') +
     geom_text(aes(label=paste0(chip,':',i),alpha=chip),color=I('black'),fontface=I(2),size=I(3))+scale_alpha(range=c(0.3,0.8))
