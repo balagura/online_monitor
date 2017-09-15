@@ -134,6 +134,41 @@ load.raw <- function(file) {
     } else display.no.data()
 }
 
+## experiment with histogramming
+bin.it <- function(x, bins) {
+    one.bin <- (bins$right - bins$left) / bins$nbins
+    half.bin <- one.bin / 2
+    centers <- seq(from=bins$left+half.bin, to=bins$right-half.bin, length.out=bins$nbins)
+    i <- floor((x - bins$left) / one.bin) + 1
+    list(x=centers, i=i)
+}
+h1 <- function(data, bins) {
+    binned.data <- bin.it(data, bins)
+    y <- tabulate(binned.data$i, nbins = bins$nbins)
+    list(x=binned.data$x, y=y)
+}
+hstep <- function(h, zero.ends=c(TRUE,TRUE)) {
+    x <- h$x
+    y <- h$y
+    bin <- x[2] - x[1]
+    if (zero.ends[1]) {
+        x <- c(x[1], x)
+        y <- c(0, y)
+    }
+    x <- c(x, x[length(x)]+bin)
+    y <- c(y, if (zero.ends[2]) 0 else y[length(y)])
+    x <- x - bin / 2
+    list(x=x,y=y)
+}
+find.binning <- function(x, bin, bin.edge=0, margin=0.1) {
+    i.rng <- range(x - bin.edge) / bin
+    i.margin <- diff(i.rng) * margin
+    i.rng <- as.integer(c(floor(i.rng[1]-i.margin), ceiling(i.rng[2]+i.margin)))
+    range = bin.edge + i.rng*bin
+    list(nbins = diff(i.rng), left=range[1], right=range[2])
+}
+## ------------------------------------------------------------
+
 win <- gtkWindow(show = FALSE)
 gtkWindowSetTitle(win, 'Online_monitor  (questions+comments -> balagura@cern.ch)')
 graphics <- gtkDrawingArea()
@@ -211,6 +246,32 @@ plots[['N "successive" SCA']] <- function() {
     qplot(data=ev.chip[eval(cut.expr(all.scas=TRUE)) & ibx.trig==1],nbx.trig, facets=~chip, xlab='N "successive" SCA',ylab='Counts',
 	main='',binwidth=1)
 }
+plots[['ibx in retrigger']] <- function() {
+    bins <- find.binning(ev.chip$ibx, bin=1, bin.edge=0.5, margin=0)
+    qplot(data=ev.chip[eval(cut.expr(all.scas=TRUE)),
+                       rbind(as.data.table(hstep(h1(ibx,      bins)))[,Clustering:='per event'][,Events.wo.trigs:='included'],
+                             as.data.table(hstep(h1(ibx.chip, bins)))[,Clustering:='per chip' ][,Events.wo.trigs:='included'],
+                             as.data.table(hstep(h1(ibx.trig, bins)))[,Clustering:='per chip' ][,Events.wo.trigs:='excluded'])],
+          x,y,geom='step', color=Clustering,linetype=Events.wo.trigs) + labs(x='consecutive N in BX cluster', y='N chip events') +
+        scale_color_manual(values = c("blue", "red")) + scale_linetype_manual(values=c('dashed','solid'))
+}
+plots[['ibx per chip']] <- function() {
+    bins <- find.binning(ev.chip$ibx, bin=1, bin.edge=0.5, margin=0)
+    qplot(data=ev.chip[eval(cut.expr(all.scas=TRUE)),
+                       rbind(as.data.table(hstep(h1(ibx,      bins)))[,Clustering:='per event'][,Events.wo.trigs:='included'],
+                             as.data.table(hstep(h1(ibx.chip, bins)))[,Clustering:='per chip' ][,Events.wo.trigs:='included'],
+                             as.data.table(hstep(h1(ibx.trig, bins)))[,Clustering:='per chip' ][,Events.wo.trigs:='excluded']), by=chip],
+          x,y,geom='step', color=Clustering,linetype=Events.wo.trigs) + facet_wrap(~chip) +
+        labs(x='consecutive N in BX cluster', y='N chip events') +
+        scale_color_manual(values = c("blue", "red")) + scale_linetype_manual(values=c('dashed','solid'))
+}
+plots[['Retrig.in chips: nbx%ibx,<21']] <- function() {
+    bins <- find.binning(ev.chip$chip, bin=1, bin.edge=0.5, margin=0)
+    qplot(data=ev.chip[eval(cut.expr(all.scas=TRUE)) & nbx<=20,
+                       hstep(h1(chip, bins)), by=list(ibx,nbx)],x,y,geom='step') +
+        facet_grid(ibx~nbx,scale='free_y') +
+        labs(x='Chip      --> consecutive BX in retrigger',y='N BX in retrigger <--       N chip events')
+}
 plots[['N trigs(ch), ibx=1']] <- function() {
     d <- hits[eval(cut.expr()) & trig==TRUE & ibx==1][,list(n.trig=.N),by=list(i,chip)][n.trig>0]
     qplot(data=d, i, n.trig, facets=~chip, xlab='Channel',ylab='N')
@@ -225,6 +286,26 @@ plots[['N trigs(X,Y), ibx=1']] <- function() {
     qplot(data=d, x,y,fill=n.trig,geom='tile',color=I('darkgreen'),xlab='X',ylab='Y') +
 	scale_fill_gradient(low="green", high="red",name='N trigs') +
 	    geom_text(aes(label=paste0(chip,':',i),alpha=chip),color=I('black'),fontface=I(2),size=I(3))+scale_alpha(range=c(0.3,0.8))
+}
+plots[['N trigs(X,Y)']] <- function() {
+    d <- hits[eval(cut.expr()) & trig==TRUE][,list(n.trig=.N),by=list(x,y,i,chip)][n.trig>0]
+    qplot(data=d, x,y,fill=n.trig,geom='tile',color=I('darkgreen'),xlab='X',ylab='Y') +
+	scale_fill_gradient(low="green", high="red",name='N trigs') +
+	    geom_text(aes(label=paste0(chip,':',i),alpha=chip),color=I('black'),fontface=I(2),size=I(3))+scale_alpha(range=c(0.3,0.8))
+}
+plots[['N trigs(X,Y) vs. ibx']] <- function() {
+    d <- hits[eval(cut.expr()) & trig==TRUE][,list(n.trig=.N),by=list(x,y,i,chip,ibx)][n.trig>0]
+    qplot(data=d, x,y,fill=n.trig,geom='tile',color=I('darkgreen'),xlab='X',ylab='Y') +
+	scale_fill_gradient(low="green", high="red",name='N trigs') + facet_wrap(~ibx)
+}
+plots[['N trig(X,Y)/N trig.max vs. ibx grp.']] <- function() {
+    d <- hits[eval(cut.expr()) & trig==TRUE
+              ][,ibx.bin:=base::cut(ibx,
+                                    c(0.5, 1.5, 2.5, 7.5, 11.5, 12.5, 13.5, 14.5, 16.5, 17.5, 18.5, 19.5, Inf),
+                                    labels=c('1','2','3-7','8-11','12','13','14','15-16','17','18','19','20+'))
+                ][,list(n.trig=.N),by=list(x,y,i,chip,ibx.bin)][n.trig>0][,n.trig.max:=max(n.trig),by=ibx.bin][,n.trig:=n.trig/n.trig.max]
+    qplot(data=d, x,y,fill=n.trig,geom='tile',color=I('darkgreen'),xlab='X',ylab='Y') +
+ scale_fill_gradient(low="green", high="red",name='N trigs/max') + facet_wrap(~ibx.bin)
 }
 plots[['<ADC>(ch,chip)']] <- function() {
     qplot(data=hits[eval(cut.expr()), list(n.trig=sum(trig),ADC=mean(adc)), by=list(chip,i)],i,chip,fill=ADC,
@@ -298,6 +379,13 @@ plots[['Pedestal RMS(X,Y)']] <- function() {
 	  x,y,fill=RMS,
 	  geom='tile',color=I('darkgreen'),xlab='X',ylab='Y') + scale_fill_gradient(low="green", high="red") +
     geom_text(aes(label=paste0(chip,':',i),alpha=chip),color=I('black'),fontface=I(2),size=I(3))+scale_alpha(range=c(0.3,0.8))
+}
+plots[['ADC-ped. per chip']] <- function() {
+  d <- hits[eval(cut.expr()) & trig==TRUE & !is.na(a)]
+  rng <- quantile(d$a, probs=c(0.005,0.995))
+  a.min <- as.integer(rng[1]/10)*10
+  a.max <- as.integer(rng[2]/10)*10
+  qplot(data=d[a.min<a & a<a.max],a,binwidth=ceiling(a.max/200), facets=~chip, xlab='Trigger-pedestal, ADC channels',ylab='Counts')
 }
 plots[['MIP, ibx=1']] <- function() {
   d <- hits[eval(cut.expr()) & trig==TRUE & ibx==1 & !is.na(a)]
