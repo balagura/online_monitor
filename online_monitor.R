@@ -59,9 +59,16 @@ load.raw <- function(file) {
     cat('Loading file ',file,'\n')
     df.names <- c('acq','bx','sca','chip','i','adc','trig')
     df.classes <- c(rep('integer',6), 'logical')
+
+    ## hits.local <- fread(paste0(online.monitor.dir,'/raw/raw ',file),
+    ##                     col.names=c('acq','bx','chip','sca',paste0(c('h','hadc','l','ladc'),'.',rep(1:64,each=4))))
+    ## hits.local <- melt(hits.local,id=1:4,measure.vars=patterns('^h\\.','^hadc','^l\\.','^ladc'),variable.name='i')
+    ## setnames(hits.local, c(names(hits.local)[1:5],'trig','adc','l.trig','l.adc'))
+    ## setkey(hits.local, acq,chip,sca,bx)
+
     hits.local <- data.table(read.table(pipe(paste0(online.monitor.dir,'/raw/raw ',file,' 0 high_gain_triggers ', pedestal.suppression)),
-				     col.names=df.names, colClasses=df.classes, comment.char=''),
-			  key='acq,chip,sca,bx')
+                                        col.names=df.names, colClasses=df.classes, comment.char=''),
+                             key='acq,chip,sca,bx')
     if (nrow(hits.local) > 0) {
 	hits.local[,bx.cor:=cumsum( {
 	    dbx = c(0,diff(bx))
@@ -124,6 +131,10 @@ load.raw <- function(file) {
 		       unbiased.pedestal <- trig==FALSE & n.neg.trig.chip == 0 & nbx==1
 		       as.double(adc) - if(any(unbiased.pedestal)) median(adc[unbiased.pedestal]) else NA
 		     }, by=list(chip,i,sca)]
+	## hits.local[,l.a := {
+	## 	       unbiased.pedestal <- trig==FALSE & n.neg.trig.chip == 0 & nbx==1
+	## 	       as.double(l.adc) - if(any(unbiased.pedestal)) median(l.adc[unbiased.pedestal]) else NA
+	## 	     }, by=list(chip,i,sca)]
 	setkey(hits.local, acq, chip, bx.cor, i)
 	setkey(ev.local.chip, acq, chip, bx.cor)
 	setkey(ev.local, acq, bx)
