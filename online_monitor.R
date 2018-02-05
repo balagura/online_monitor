@@ -65,6 +65,7 @@ load.raw <- function(file) {
     ## hits.local <- melt(hits.local,id=1:4,measure.vars=patterns('^h\\.','^hadc','^l\\.','^ladc'),variable.name='i')
     ## setnames(hits.local, c(names(hits.local)[1:5],'trig','adc','l.trig','l.adc'))
     ## setkey(hits.local, acq,chip,sca,bx)
+    ## hits.local[,i:=as.integer(i)]
 
     hits.local <- data.table(read.table(pipe(paste0(online.monitor.dir,'/raw/raw ',file,' 0 high_gain_triggers ', pedestal.suppression)),
                                         col.names=df.names, colClasses=df.classes, comment.char=''),
@@ -846,7 +847,13 @@ chip.selection$active <- 0 # 'All', otherwise chip.glob+1
 sca.selection$active <- 0 # 'All', otherwise sca.glob
 dif.selection$active <- 0 # 'All', otherwise sca.glob
 
-invisible(lapply(gtkContainerGetChildren(hbox), function(x) if (! (x==open.file | x==help.button)) x$sensitive = FALSE)) # grey out everything except open.file
+invisible(lapply(gtkContainerGetChildren(hbox),
+                 function(x) if (! (identical(x,open.file) |
+                                    identical(x,help.button))) x$sensitive = FALSE))
+## - grey out everything except open.file and help buttons.
+## Note, x==open.file worked in earlier versions of R, but in  3.4.3 (2017-11-30)
+## it produces "Error in unclass(x) : cannot unclass an external pointer" error.
+## So, I changed ".. = .." it to identical(.., ..) which works.
 
 daq.state.selection.connect <- gSignalConnect(daq.state.selection, 'changed', change.daq.state.selection)
 plot.selection.connect      <- gSignalConnect(plot.selection, 'changed', change.plot.selection)
