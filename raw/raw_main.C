@@ -103,7 +103,8 @@ int main(int argc, char** argv) {
 	    ChipADC ah =s.high[ich], al = s.low[ich];
 	    if (ah.hit || drand48() <= pedestal_suppression) { // eg. for pedestal_suppression=0.05: suppress non triggers by 20
 	      cout << spill.acquisition_number() << " " << bx << " " << s.isca+1 << " "
-		   << s.chip_id << " " << ich << " " << ah.adc << " " << (ah.hit ? 'T' : 'F') << '\n';
+		   << s.chip_id << " " << ich << " " << ah.adc << " " << int(ah.hit) << '\n';
+		// (ah.hit ? 'T' : 'F') << '\n';
 	      ++iLine; if (iLine >= nMaxLines) return 0;
 	    }
 	  }
