@@ -67,9 +67,14 @@ load.raw <- function(file) {
     ## setkey(hits.local, acq,chip,sca,bx)
     ## hits.local[,i:=as.integer(i)]
 
-    hits.local <- data.table(read.table(pipe(paste0(online.monitor.dir,'/raw/raw ',file,' 0 high_gain_triggers ', pedestal.suppression)),
-                                        col.names=df.names, colClasses=df.classes, comment.char=''),
-                             key='acq,chip,sca,bx')
+    hits.local <- fread(paste0(online.monitor.dir,'/raw/raw ',file,' 0 high_gain_triggers ', pedestal.suppression),
+                        col.names=df.names, colClasses=df.classes, logical01=TRUE,
+                        key='acq,chip,sca,bx')
+
+    ## hits.local <- data.table(read.table(pipe(paste0(online.monitor.dir,'/raw/raw ',file,' 0 high_gain_triggers ',
+    ##                                                 pedestal.suppression)),
+    ##                                     col.names=df.names, colClasses=df.classes, comment.char=''),
+    ##                          key='acq,chip,sca,bx')
     if (nrow(hits.local) > 0) {
 	hits.local[,bx.cor:=cumsum( {
 	    dbx = c(0,diff(bx))
