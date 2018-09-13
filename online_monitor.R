@@ -259,9 +259,61 @@ plots[['Channels w/trig']] <- function() {
 			   labs(x='ADC, channels',y='Counts')+
 			       scale_color_hue(name='Events')+scale_fill_hue(name='Events')
 }
+plots[['Out of range ADC']] <- function() {
+    thr <- 6
+    . <- hits[eval(cut.expr()) & trig==TRUE,
+              hstep(h1(ifelse(adc>thr, thr+1, adc),
+                       list(nbins=thr+2, left=-.5, right=thr+1.5))),
+              by=chip]
+    print(hits[eval(cut.expr()) & trig==TRUE, {
+        fr.0 <- sum(adc==0) / .N
+        fr.4 <- sum(adc==4) / .N
+        list(adc.0=fr.0, adc.4=fr.4, rest=1 - fr.0 - fr.4)
+    }, keyby=chip])
+    qplot(data=., x=x,y=y, geom='step', facets=~chip) +
+        scale_x_continuous(labels=c(0:thr,'above'), breaks=0:(thr+1)) +
+        labs(x='ADC channels',y='N triggers') +
+        theme(axis.text.x = element_text(angle=30, vjust=0.5))
+}
 plots[['N "successive" SCA']] <- function() {
-    qplot(data=ev.chip[eval(cut.expr(all.scas=TRUE)) & ibx.trig==1],nbx.trig, facets=~chip, xlab='N "successive" SCA',ylab='Counts',
+    qplot(data=ev.chip[eval(cut.expr(all.scas=TRUE)) & ibx.trig==1],
+          nbx.trig, facets=~chip, xlab='N "successive" SCA',ylab='Counts',
 	main='',binwidth=1)
+}
+plots[['% of retrig']] <- function() {
+    . <- ev.chip[eval(cut.expr()),
+                 list(retrig=c(ibx.chip>1,   ibx>1),
+                       type=rep(c('one chip','all chips'),each=.N)),
+                 by=.(acq,bx,chip)]
+    tmp <- dcast(., type~retrig, fun.aggregate=length, value.var='type')
+    setnames(tmp,c('FALSE','TRUE'),c('good','retrig'))
+    print(tmp[, {
+        n <- good+retrig
+        list(good=good/n, retrig=retrig/n)
+        }, by=type])
+    . <- .[,hstep(h1(retrig,list(nbins=2,left=-.5,right=1.5))),by=.(type)]
+    qplot(data=., x=x,y=y, color=type, geom='step') +
+        scale_color_manual(values=c('blue','red')) +
+        scale_x_continuous(labels=c('Good','Retrig.'), breaks=c(0,1)) +
+        theme(axis.text.x = element_text(angle=30, vjust=0.5)) +
+        labs(x='', y='N chip data blocks', color='Retrig. from')
+}
+plots[['% of retrig per chip']] <- function() {
+    . <- ev.chip[eval(cut.expr()),
+                 list(retrig=c(ibx.chip>1,   ibx>1),
+                       type=rep(c('one chip','all chips'),each=.N)),
+                 by=.(acq,bx,chip)]
+    print(dcast(.[, list(n = .N), keyby=.(type,retrig,chip)
+                  ][, list(fraction = n / sum(n),
+                           retrig=c('good','retrig')[retrig+1]),
+                    keyby=.(type,chip)],
+                chip~type+retrig, value.var='fraction'))
+    . <- .[,hstep(h1(retrig,list(nbins=2,left=-.5,right=1.5))),by=.(type,chip)]
+    qplot(data=., x=x,y=y, color=type, geom='step', facets=~chip) +
+        scale_color_manual(values=c('blue','red')) +
+        scale_x_continuous(labels=c('Good','Retrig.'), breaks=c(0,1)) +
+        theme(axis.text.x = element_text(angle=30, vjust=0.5)) +
+        labs(x='', y='N chip data blocks', color='Retrig. from')
 }
 plots[['ibx in retrigger']] <- function() {
     bins <- find.binning(ev.chip$ibx, bin=1, bin.edge=0.5, margin=0)
@@ -288,6 +340,18 @@ plots[['Retrig.in chips: nbx%ibx,<21']] <- function() {
                        hstep(h1(chip, bins)), by=list(ibx,nbx)],x,y,geom='step') +
         facet_grid(ibx~nbx,scale='free_y') +
         labs(x='Chip      --> consecutive BX in retrigger',y='N BX in retrigger <--       N chip events')
+}
+plots[['N trigs per chip block']] <- function() {
+    . <- ev.chip[, list(n.trig=c(0:9,'>=10')[pmin(n.trig.chip,10)+1],
+                          chip)
+                   ][,list(n=.N), keyby=.(n.trig,chip)
+                     ][, list(fraction=n/sum(n), n.trig), by=chip]
+    print(dcast(., chip~n.trig, value.var='fraction'))
+    ##
+    bins <- find.binning(ev.chip$n.trig.chip, bin=1, bin.edge=0.5, margin=0)
+    . <- ev.chip[, hstep(h1(n.trig.chip, bins)), by=chip]
+    qplot(data=., x=x,y=y, geom='step', facets=~chip) +
+        labs(x='N triggers per chip data block',y='N chip data blocks')
 }
 plots[['N trigs(ch), ibx=1']] <- function() {
     d <- hits[eval(cut.expr()) & trig==TRUE & ibx==1][,list(n.trig=.N),by=list(i,chip)][n.trig>0]
