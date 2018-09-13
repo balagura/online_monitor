@@ -316,7 +316,7 @@ plots[['% of retrig per chip']] <- function() {
         labs(x='', y='N chip data blocks', color='Retrig. from')
 }
 plots[['ibx in retrigger']] <- function() {
-    bins <- find.binning(ev.chip$ibx, bin=1, bin.edge=0.5, margin=0)
+    bins <- find.binning(ev.chip[eval(cut.expr(all.scas=TRUE))]$ibx, bin=1, bin.edge=0.5, margin=0)
     qplot(data=ev.chip[eval(cut.expr(all.scas=TRUE)),
                        rbind(as.data.table(hstep(h1(ibx,      bins)))[,Clustering:='per event'][,Events.wo.trigs:='included'],
                              as.data.table(hstep(h1(ibx.chip, bins)))[,Clustering:='per chip' ][,Events.wo.trigs:='included'],
@@ -325,7 +325,7 @@ plots[['ibx in retrigger']] <- function() {
         scale_color_manual(values = c("blue", "red")) + scale_linetype_manual(values=c('dashed','solid'))
 }
 plots[['ibx per chip']] <- function() {
-    bins <- find.binning(ev.chip$ibx, bin=1, bin.edge=0.5, margin=0)
+    bins <- find.binning(ev.chip[eval(cut.expr(all.scas=TRUE))]$ibx, bin=1, bin.edge=0.5, margin=0)
     qplot(data=ev.chip[eval(cut.expr(all.scas=TRUE)),
                        rbind(as.data.table(hstep(h1(ibx,      bins)))[,Clustering:='per event'][,Events.wo.trigs:='included'],
                              as.data.table(hstep(h1(ibx.chip, bins)))[,Clustering:='per chip' ][,Events.wo.trigs:='included'],
@@ -335,21 +335,21 @@ plots[['ibx per chip']] <- function() {
         scale_color_manual(values = c("blue", "red")) + scale_linetype_manual(values=c('dashed','solid'))
 }
 plots[['Retrig.in chips: nbx%ibx,<21']] <- function() {
-    bins <- find.binning(ev.chip$chip, bin=1, bin.edge=0.5, margin=0)
-    qplot(data=ev.chip[eval(cut.expr(all.scas=TRUE)) & nbx<=20,
-                       hstep(h1(chip, bins)), by=list(ibx,nbx)],x,y,geom='step') +
+    . <- ev.chip[eval(cut.expr(all.scas=TRUE)) & nbx<=20]
+    bins <- find.binning(.$chip, bin=1, bin.edge=0.5, margin=0)
+    qplot(data=.[, hstep(h1(chip, bins)), by=list(ibx,nbx)],x,y,geom='step') +
         facet_grid(ibx~nbx,scale='free_y') +
         labs(x='Chip      --> consecutive BX in retrigger',y='N BX in retrigger <--       N chip events')
 }
 plots[['N trigs per chip block']] <- function() {
-    . <- ev.chip[, list(n.trig=c(0:9,'>=10')[pmin(n.trig.chip,10)+1],
-                          chip)
-                   ][,list(n=.N), keyby=.(n.trig,chip)
-                     ][, list(fraction=n/sum(n), n.trig), by=chip]
+    . <- ev.chip[eval(cut.expr()), list(n.trig=c(0:9,'>=10')[pmin(n.trig.chip,10)+1],
+                                        chip)
+                 ][,list(n=.N), keyby=.(n.trig,chip)
+                   ][, list(fraction=n/sum(n), n.trig), by=chip]
     print(dcast(., chip~n.trig, value.var='fraction'))
     ##
-    bins <- find.binning(ev.chip$n.trig.chip, bin=1, bin.edge=0.5, margin=0)
-    . <- ev.chip[, hstep(h1(n.trig.chip, bins)), by=chip]
+    bins <- find.binning(ev.chip[eval(cut.expr())]$n.trig.chip, bin=1, bin.edge=0.5, margin=0)
+    . <- ev.chip[eval(cut.expr()), hstep(h1(n.trig.chip, bins)), by=chip]
     qplot(data=., x=x,y=y, geom='step', facets=~chip) +
         labs(x='N triggers per chip data block',y='N chip data blocks')
 }
