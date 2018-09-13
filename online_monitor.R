@@ -280,7 +280,7 @@ plots[['N "successive" SCA']] <- function() {
           nbx.trig, facets=~chip, xlab='N "successive" SCA',ylab='Counts',
 	main='',binwidth=1)
 }
-plots[['% of retrig']] <- function() {
+plots[['N retrig']] <- function() {
     . <- ev.chip[eval(cut.expr()),
                  list(retrig=c(ibx.chip>1,   ibx>1),
                        type=rep(c('one chip','all chips'),each=.N)),
@@ -296,9 +296,9 @@ plots[['% of retrig']] <- function() {
         scale_color_manual(values=c('blue','red')) +
         scale_x_continuous(labels=c('Good','Retrig.'), breaks=c(0,1)) +
         theme(axis.text.x = element_text(angle=30, vjust=0.5)) +
-        labs(x='', y='N chip data blocks', color='Retrig. from')
+        labs(x='', y='N SCA', color='Retrig. from')
 }
-plots[['% of retrig per chip']] <- function() {
+plots[['N retrig per chip']] <- function() {
     . <- ev.chip[eval(cut.expr()),
                  list(retrig=c(ibx.chip>1,   ibx>1),
                        type=rep(c('one chip','all chips'),each=.N)),
@@ -313,7 +313,7 @@ plots[['% of retrig per chip']] <- function() {
         scale_color_manual(values=c('blue','red')) +
         scale_x_continuous(labels=c('Good','Retrig.'), breaks=c(0,1)) +
         theme(axis.text.x = element_text(angle=30, vjust=0.5)) +
-        labs(x='', y='N chip data blocks', color='Retrig. from')
+        labs(x='', y='N SCA', color='Retrig. from')
 }
 plots[['ibx in retrigger']] <- function() {
     bins <- find.binning(ev.chip[eval(cut.expr(all.scas=TRUE))]$ibx, bin=1, bin.edge=0.5, margin=0)
@@ -341,7 +341,7 @@ plots[['Retrig.in chips: nbx%ibx,<21']] <- function() {
         facet_grid(ibx~nbx,scale='free_y') +
         labs(x='Chip      --> consecutive BX in retrigger',y='N BX in retrigger <--       N chip events')
 }
-plots[['N trigs per chip block']] <- function() {
+plots[['N trigs in SCA per chip']] <- function() {
     . <- ev.chip[eval(cut.expr()), list(n.trig=c(0:9,'>=10')[pmin(n.trig.chip,10)+1],
                                         chip)
                  ][,list(n=.N), keyby=.(n.trig,chip)
@@ -351,7 +351,7 @@ plots[['N trigs per chip block']] <- function() {
     bins <- find.binning(ev.chip[eval(cut.expr())]$n.trig.chip, bin=1, bin.edge=0.5, margin=0)
     . <- ev.chip[eval(cut.expr()), hstep(h1(n.trig.chip, bins)), by=chip]
     qplot(data=., x=x,y=y, geom='step', facets=~chip) +
-        labs(x='N triggers per chip data block',y='N chip data blocks')
+        labs(x='N triggers per SCA',y='N SCA')
 }
 plots[['N trigs(ch), ibx=1']] <- function() {
     d <- hits[eval(cut.expr()) & trig==TRUE & ibx==1][,list(n.trig=.N),by=list(i,chip)][n.trig>0]
